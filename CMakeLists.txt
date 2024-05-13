@@ -13,6 +13,10 @@ FetchContent_Declare(ftxui
         GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui
         GIT_TAG v5.0.0
 )
+FetchContent_Declare(ftxui-grid-container
+  GIT_REPOSITORY https://github.com/mingsheng13/grid-container-ftxui
+  GIT_TAG master
+)
 
 FetchContent_GetProperties(ftxui)
 if(NOT ftxui_POPULATED)
@@ -21,7 +25,7 @@ if(NOT ftxui_POPULATED)
 endif()
 
 FetchContent_MakeAvailable(ftxui)
-
+FetchContent_MakeAvailable(ftxui-grid-container)
 project(ChaxTUI LANGUAGES CXX VERSION 0.0.1)
 
 add_executable(ChaxTUI main.cpp ${SOURCES})
@@ -30,6 +34,7 @@ target_link_libraries(ChaxTUI
     PRIVATE ftxui::screen
     PRIVATE ftxui::dom
     PRIVATE ftxui::component
+    PRIVATE ftxui-grid-container
 )
 
 

@@ -5,3 +5,4 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/util/ref.hpp>
+#include <ftxui-grid-container/grid-container.hpp>

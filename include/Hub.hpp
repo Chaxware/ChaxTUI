@@ -3,23 +3,23 @@
 
 #pragma once
 
-
 // channel metadata
-struct Channel {
+struct Channel
+{
     std::string Name;
-    std::string Id;
-
+    int Id;
+    std::vector<std::string> messages;
     std::string fetchChannelDescription();
 };
 
-
-class Hub {
+class Hub
+{
 public:
     std::string Name;
     std::vector<Channel> Channels;
 
-    explicit Hub(const std::string&);
+    explicit Hub(const std::string &);
 
-    void fetchChannelsInto(std::vector<Channel>&);
-    void fetchChannelNamesInto(std::vector<std::string>&);
+    void fetchChannelsInto(std::vector<Channel> &);
+    void fetchChannelNamesInto(std::vector<std::string> &);
 };
