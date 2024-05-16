@@ -6,10 +6,37 @@
 
 #include <FtxUI.h>
 
+<<<<<<< Updated upstream
 int main()
 {
 
   using namespace ftxui;
+=======
+using namespace ftxui;
+
+Component Profile_Content()
+{
+  class Impl : public ComponentBase
+  {
+  private:
+    bool checked[3] = {false, false, false};
+    float slider = 50;
+
+  public:
+    Impl()
+    {
+      Add(Container::Vertical({
+
+      }));
+    }
+  };
+  return Make<Impl>();
+}
+
+int main()
+{
+  auto screen = ftxui::ScreenInteractive::Fullscreen();
+>>>>>>> Stashed changes
 
   NetworkManager net_man;
   Hub dms = Hub("DMs");
@@ -24,6 +51,10 @@ int main()
   DM_1.messages.push_back("HI there, I am DM-1");
   DM_2.messages.push_back("HI there, I am DM-2");
   DM_1.messages.push_back("This is the second message in DM-1");
+<<<<<<< Updated upstream
+=======
+  DM_1.messages.push_back("Known issues: Focus problems, you need to click on the menu to <focus> on it before the keyboard shortcuts start working");
+>>>>>>> Stashed changes
   DM_2.messages.push_back("This is the ninth message in DM-2");
 
   Channel test_subject_1_ch1;
@@ -89,6 +120,30 @@ int main()
   {
     text_area_components.push_back(text(m)); // populate texts from texts in channel
   }
+<<<<<<< Updated upstream
+=======
+
+  // create a menu dropdown, contains Join server, Leave current server, Open profile, etc
+  std::vector<std::string> menubutton_entries = {"Join Server", "Leave Server", "My Profile", "Press <TAB> to exit", "Press <ENTER> to continue"};
+  int menubutton_selected = 0;
+  auto menubutton_menu = Menu({.entries = &menubutton_entries, .selected = &menubutton_selected});
+  bool menubutton_open = false;
+
+  // Profile menu
+  // Element dummyprofile = text("My Profile");
+  bool profile_menu_open = false;
+  auto profile_window = Window({
+      .inner = Profile_Content(),
+  });
+  profile_window |= CatchEvent([&](auto event)
+                               {
+    bool ret = Event::Escape == event;
+    if (ret) {
+      menubutton_open = false;
+      profile_menu_open = false;
+    }
+    return ret; });
+>>>>>>> Stashed changes
   // Catch events
   int msg_offset = 0;
   text_field |= CatchEvent([&](auto event)
@@ -120,11 +175,94 @@ int main()
       }
     }
     return ret; });
+<<<<<<< Updated upstream
 
   auto screen = ftxui::ScreenInteractive::Fullscreen();
   auto components = Container::Horizontal({text_field, hub_dropdown, channel_dropdown});
   auto renderer = Renderer(components, [&]
                            {
+=======
+  hub_dropdown |= CatchEvent([&](auto event)
+                             {
+                            bool ret = Event::Special({9}) == event;
+                            if (ret && menubutton_open == false){
+                              menubutton_open = true;
+                            } else if (ret && menubutton_open == true){
+                              menubutton_open = false;
+                            }
+                            return ret; });
+  channel_dropdown |= CatchEvent([&](auto event)
+                                 {
+                            bool ret = Event::Special({9}) == event;
+                            if (ret && menubutton_open == false){
+                              menubutton_open = true;
+                            } else if (ret && menubutton_open == true){
+                              menubutton_open = false;
+                            }
+                            return ret; });
+  text_field |= CatchEvent([&](auto event)
+                           {
+                            bool ret = Event::Special({9}) == event;
+                            if (ret && menubutton_open == false){
+                              menubutton_open = true;
+                            } else if (ret && menubutton_open == true){
+                              menubutton_open = false;
+                            }
+                            return ret; });
+
+  menubutton_menu |= CatchEvent([&](auto event)
+                                {
+                                  bool ret = Event::Special({9}) == event;
+                                  if (ret && menubutton_open == true)
+                                  {
+                                    profile_menu_open = false;
+                                    menubutton_open = false;
+                                  }
+                                  return ret; });
+  menubutton_menu |= CatchEvent([&](auto event)
+                                {
+                            bool ret = Event::Return == event;
+                            if (ret){
+                              if (menubutton_selected == 0){
+                                // its join server, handle join server using netman
+                                
+                                // join_server_menu = true;
+                                // // display the join server menu, handle a "Enter" command and then proceed with following code
+                                
+                                // user_hubs.push_back(net_man.join_server(SERVER_ID));
+                                // // this should automatically display the Hub in the dropdown next
+                              }
+                              if (menubutton_selected == 2){
+                                profile_menu_open = true;
+                              }
+                            }
+                            return ret; });
+  menubutton_menu |= CatchEvent([&](auto event)
+                                {
+    bool ret = Event::ArrowDown == event;
+    if (ret){
+      if (menubutton_selected < 2){
+        menubutton_selected += 1;
+      }
+      
+    }
+    return ret; });
+  menubutton_menu |= CatchEvent([&](auto event)
+                                {
+    bool ret = Event::ArrowUp == event;
+    if (ret){
+      if (menubutton_selected > 0){
+        menubutton_selected -= 1;
+      }
+      
+    }
+    return ret; });
+
+  auto components = Container::Horizontal({text_field, hub_dropdown, channel_dropdown, menubutton_menu});
+  auto renderer = Renderer(components, [&]
+                           {
+                              std::string dummy_username = "kek";
+>>>>>>> Stashed changes
                              hub_channel_names.clear();
                              for (auto c : user_hubs[selected_hub].Channels)
                              {
@@ -141,9 +279,33 @@ int main()
                                text_area_components.push_back(text(user_hubs[selected_hub].Channels[selected_channel].messages[i]));
                              }
                              text_area = vbox(text_area_components);
+<<<<<<< Updated upstream
                              return gridbox({
                                  {text_area | ftxui::flex_grow | yframe, hub_dropdown->Render(), channel_dropdown->Render()},
                                  {text_field->Render() | border}
                              }); });
   screen.Loop(renderer);
 }
+=======
+                            if (!menubutton_open){
+                             return gridbox({
+                                 {text_area | ftxui::flex_grow | yframe, hub_dropdown->Render(), channel_dropdown->Render()},
+                                 {text_field->Render() | border}
+                             });}
+                          else if (profile_menu_open) {
+                            return gridbox({
+                                {profile_window->Render()},
+                                {text("If you're hamzaa you suck")},
+                                {text("Username is " + dummy_username)},
+                                {text("Email: avob@cutie.com")},
+                                {text("Press <TAB> to exit")},
+                                });
+                          }
+                            else {
+                             return gridbox({
+                                {menubutton_menu->Render()}
+                                });
+                            } });
+  screen.Loop(renderer);
+}
+>>>>>>> Stashed changes
