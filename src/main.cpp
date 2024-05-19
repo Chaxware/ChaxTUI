@@ -2,6 +2,8 @@
 
 #include <clocale>
 
+#include "util/Window.hpp"
+
 int screenHeight, screenWidth;
 
 int main(int argc, char *argv[]) {
@@ -26,12 +28,12 @@ int main(int argc, char *argv[]) {
   // Get current dimensions of terminal screen
   getmaxyx(stdscr, screenHeight, screenWidth);
 
-  WINDOW *greetingWindow =
-      newwin(5, 30, screenHeight / 2 - 3, screenWidth / 2 - 15);
-  box(greetingWindow, 0, 0);  // Draw border
-  mvwprintw(greetingWindow, 0, 6, " Hello Internet! ");
-  mvwprintw(greetingWindow, 2, 7, "Welcome to Chax");
-  wrefresh(greetingWindow);
+  Window greetingWindow(
+      (Position){screenHeight / 2 - 3, screenWidth / 2 - 15}, (Size){5, 30}
+  );
+  mvwprintw(greetingWindow.win, 0, 6, " Hello Internet! ");
+  mvwprintw(greetingWindow.win, 2, 7, "Welcome to Chax");
+  wrefresh(greetingWindow.win);
 
   getch();  // Get character input
 
