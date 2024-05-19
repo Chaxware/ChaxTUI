@@ -1,6 +1,7 @@
 # Prerequisites
 *.d
 .*
+!.clang-format
 cmake-build-debug
 build
 
