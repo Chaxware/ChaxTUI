@@ -9,6 +9,6 @@ set(SOURCES
 
 add_executable(chax ${SOURCES})
 
-target_link_libraries(chax ${NCURSES_LIBRARIES} panel)
-
 target_include_directories(chax PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
+target_link_libraries(chax ${NCURSES_LIBRARIES} panel)
