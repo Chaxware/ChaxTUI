@@ -10,8 +10,21 @@ pub fn handle_events(app: &mut App) -> Result<()> {
             return Ok(());
         }
 
-        if key.code == KeyCode::Char('q') {
-            app.app_state = AppState::Exit;
+        match key.code {
+            KeyCode::Esc => {
+                app.app_state = AppState::Exit;
+            }
+            KeyCode::Backspace if !app.active_chat.typing_message.is_empty() => {
+                app.active_chat.typing_message.pop();
+            }
+            KeyCode::Enter => {
+                app.send_message(&app.active_chat.typing_message);
+                app.active_chat.typing_message = String::new();
+            }
+            KeyCode::Char(value) => {
+                app.active_chat.typing_message.push(value);
+            }
+            _ => {}
         }
     }
     Ok(())
