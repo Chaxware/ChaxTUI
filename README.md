@@ -1,4 +1,3 @@
-# ChaxTUI
+# chax-tui
 
-This is the Terminal User Interface (TUI) of the Chax Project.
-
+A TUI (Terminal User Interface) for the Chax app made in Rust using [Ratatui](https://github.com/ratatui-org/ratatui)
