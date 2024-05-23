@@ -2,9 +2,12 @@ use std::io::Result;
 
 use crossterm::event::{self, Event, KeyCode};
 
-use crate::app::{App, AppState};
+use crate::{
+    api::MessageItem,
+    app::{App, AppState},
+};
 
-pub fn handle_events(app: &mut App) -> Result<()> {
+pub async fn handle_events(app: &mut App) -> Result<()> {
     if let Event::Key(key) = event::read()? {
         if key.kind == event::KeyEventKind::Release {
             return Ok(());
@@ -20,9 +23,14 @@ pub fn handle_events(app: &mut App) -> Result<()> {
                 typing_message.pop();
             }
             KeyCode::Enter => {
-                let message = typing_message.clone();
+                let message = MessageItem {
+                    id: "".into(),
+                    text: typing_message.clone(),
+                    created_at: "".into(),
+                };
                 typing_message.clear();
-                app.send_message(message, app.active_chat);
+
+                app.send_message(message).await;
             }
             KeyCode::Char(value) => {
                 typing_message.push(value);
