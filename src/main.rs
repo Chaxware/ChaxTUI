@@ -7,11 +7,13 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 
+mod api;
 mod app;
 mod events;
 mod ui;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen)?;
 
@@ -19,7 +21,7 @@ fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new();
-    app.run(&mut terminal)?;
+    app.run(&mut terminal).await?;
 
     disable_raw_mode()?;
     execute!(stdout(), LeaveAlternateScreen)?;

@@ -23,20 +23,20 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
         .block(Block::default().padding(Padding::new(0, 0, 1, 0)));
     frame.render_widget(hero, chunks[0]);
 
-    let mut messages = Vec::new();
+    let mut message_list = Vec::new();
     for message in &app.chats[app.active_chat].messages {
-        messages.push(ListItem::from(vec![
+        message_list.push(ListItem::from(vec![
             Line::from(vec![
                 Span::raw("You").bold().fg(Color::Cyan),
                 Span::raw(": "),
-                Span::from(message.as_str()),
+                Span::from(message.text.clone()),
             ]),
             Line::default(),
         ]));
     }
-    messages.reverse();
+    message_list.reverse();
 
-    let chat_window = List::new(messages)
+    let chat_window = List::new(message_list)
         .block(
             Block::default()
                 .borders(Borders::ALL)
