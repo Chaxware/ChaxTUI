@@ -1,8 +1,8 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
-    text::Line,
-    widgets::{Block, BorderType, Borders, Padding, Paragraph},
+    style::{Color, Style, Stylize},
+    text::{Line, Span},
+    widgets::{Block, BorderType, Borders, List, ListDirection, ListItem, Padding, Paragraph},
     Frame,
 };
 
@@ -23,12 +23,31 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
         .block(Block::default().padding(Padding::new(0, 0, 1, 0)));
     frame.render_widget(hero, chunks[0]);
 
-    let chat_window = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded);
+    let mut messages = Vec::new();
+    for message in &app.chats[app.active_chat].messages {
+        messages.push(ListItem::from(vec![
+            Line::from(vec![
+                Span::raw("You").bold().fg(Color::Cyan),
+                Span::raw(": "),
+                Span::from(message.as_str()),
+            ]),
+            Line::default(),
+        ]));
+    }
+    messages.reverse();
+
+    let chat_window = List::new(messages)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .padding(Padding::new(2, 2, 1, 0)),
+        )
+        .direction(ListDirection::BottomToTop);
     frame.render_widget(chat_window, chunks[1]);
 
-    let mut typing_message = app.active_chat.typing_message.clone();
+    let active_chat = &app.chats[app.active_chat];
+    let mut typing_message = active_chat.typing_message.clone();
     let mut empty_message = false;
     if typing_message.is_empty() {
         typing_message = String::from("Write a message...");

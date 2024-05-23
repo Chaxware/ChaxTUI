@@ -22,13 +22,16 @@ pub enum ChatType {
 }
 pub struct Chat {
     pub chat_type: ChatType,
+    pub messages: Vec<String>,
     pub typing_message: String,
 }
 
 pub struct App {
     pub app_state: AppState,
     pub current_screen: CurrentScreen,
-    pub active_chat: Chat,
+
+    pub chats: Vec<Chat>,
+    pub active_chat: usize,
 }
 
 impl App {
@@ -36,10 +39,12 @@ impl App {
         App {
             app_state: AppState::Active,
             current_screen: CurrentScreen::Chat,
-            active_chat: Chat {
+            chats: vec![Chat {
                 chat_type: ChatType::DM,
+                messages: Vec::new(),
                 typing_message: String::new(),
-            },
+            }],
+            active_chat: 0,
         }
     }
 
@@ -51,8 +56,11 @@ impl App {
         Ok(())
     }
 
-    pub fn send_message(&self, message: &str) {
-        println!("{}", message);
-        // TODO: Implement (at least a fake) message send
+    pub fn send_message(&mut self, message: String, chat_index: usize) {
+        if chat_index >= self.chats.len() {
+            return;
+        };
+
+        self.chats[chat_index].messages.push(message);
     }
 }

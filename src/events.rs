@@ -10,19 +10,22 @@ pub fn handle_events(app: &mut App) -> Result<()> {
             return Ok(());
         }
 
+        // let active_chat = &app.chats[app.active_chat.unwrap()];
+        let typing_message = &mut app.chats[app.active_chat].typing_message;
         match key.code {
             KeyCode::Esc => {
                 app.app_state = AppState::Exit;
             }
-            KeyCode::Backspace if !app.active_chat.typing_message.is_empty() => {
-                app.active_chat.typing_message.pop();
+            KeyCode::Backspace if !typing_message.is_empty() => {
+                typing_message.pop();
             }
             KeyCode::Enter => {
-                app.send_message(&app.active_chat.typing_message);
-                app.active_chat.typing_message = String::new();
+                let message = typing_message.clone();
+                typing_message.clear();
+                app.send_message(message, app.active_chat);
             }
             KeyCode::Char(value) => {
-                app.active_chat.typing_message.push(value);
+                typing_message.push(value);
             }
             _ => {}
         }
