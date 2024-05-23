@@ -6,9 +6,10 @@ use ratatui::{
     Frame,
 };
 
-use crate::app::App;
+use crate::app::{App, MessageType};
 
 pub fn draw_ui(frame: &mut Frame, app: &mut App) {
+    // Define layout
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -18,19 +19,33 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
         ])
         .split(frame.size());
 
-    let hero = Paragraph::new("Chax")
+    // Wordmark
+    let wordmark = Paragraph::new("Chax")
         .centered()
         .block(Block::default().padding(Padding::new(0, 0, 1, 0)));
-    frame.render_widget(hero, chunks[0]);
+    frame.render_widget(wordmark, chunks[0]);
 
+    // Chat Window
     let mut message_list = Vec::new();
     for message in &app.chats[app.active_chat].messages {
+        let mut author_span = Span::raw(format!(" {} ", &message.author)).bold();
+        let mut message_span = Span::from(message.text.clone());
+
+        match message.message_type {
+            MessageType::Normal => {
+                author_span = author_span.fg(Color::Cyan);
+            }
+            MessageType::Unsent => {
+                message_span = message_span.fg(Color::DarkGray);
+            }
+            MessageType::SystemError => {
+                author_span = author_span.bg(Color::Red).fg(Color::DarkGray);
+                message_span = message_span.fg(Color::Red);
+            }
+        }
+
         message_list.push(ListItem::from(vec![
-            Line::from(vec![
-                Span::raw("You").bold().fg(Color::Cyan),
-                Span::raw(": "),
-                Span::from(message.text.clone()),
-            ]),
+            Line::from(vec![author_span, Span::raw(": "), message_span]),
             Line::default(),
         ]));
     }
@@ -46,6 +61,7 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
         .direction(ListDirection::BottomToTop);
     frame.render_widget(chat_window, chunks[1]);
 
+    // Message Box
     let active_chat = &app.chats[app.active_chat];
     let mut typing_message = active_chat.typing_message.clone();
     let mut empty_message = false;

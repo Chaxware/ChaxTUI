@@ -2,7 +2,7 @@ use std::io::Result;
 
 use ratatui::{backend::Backend, Terminal};
 
-use crate::api::{Api, MessageItem};
+use crate::api::Api;
 use crate::events::handle_events;
 use crate::ui::draw_ui;
 
@@ -10,21 +10,10 @@ pub enum CurrentScreen {
     Chat,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum AppState {
     Active,
     Exit,
-}
-
-pub enum ChatType {
-    DM,
-    // Group,
-    // Server,
-}
-pub struct Chat {
-    pub chat_type: ChatType,
-    pub messages: Vec<MessageItem>,
-    pub typing_message: String,
 }
 
 pub struct App {
@@ -61,10 +50,27 @@ impl App {
         Ok(())
     }
 
-    pub async fn send_message(&mut self, message: MessageItem) {
-        if self.api.send_message(&message.text).await.is_ok() {
-            self.chats[self.active_chat].messages.push(message);
+    pub async fn send_message(&mut self, mut message: Message) {
+        match self.api.send_message(&message.text).await {
+            Ok(_) => {
+                self.chats[self.active_chat].messages.push(message);
+            }
+            Err(e) => {
+                message.message_type = MessageType::Unsent;
+                self.chats[self.active_chat].messages.push(message);
+                self.show_error(format!("Failed to send message: {}", e));
+            }
         }
+    }
+
+    pub fn show_error(&mut self, error: String) {
+        self.chats[self.active_chat].messages.push(Message {
+            id: "".into(),
+            time: "".into(),
+            author: "System".into(),
+            text: error,
+            message_type: MessageType::SystemError,
+        });
     }
 
     pub async fn update_messages(&mut self) {
@@ -73,11 +79,48 @@ impl App {
         let fetch_result = self.api.fetch_messages().await;
         match fetch_result {
             Ok(result) => {
-                self.chats[self.active_chat].messages = result.messages;
+                self.chats[self.active_chat].messages = Vec::new();
+                for message in result.messages {
+                    self.chats[self.active_chat].messages.push(Message {
+                        id: message.id,
+                        time: message.created_at,
+                        author: "Someone".into(),
+                        text: message.text,
+                        message_type: MessageType::Normal,
+                    })
+                }
             }
-            Err(_) => {
-                eprintln!("Failed to fetch messages");
+            Err(e) => {
+                self.show_error(format!("Failed to fetch messages: {}", e));
             }
         }
     }
+}
+
+pub enum ChatType {
+    DM,
+    // Group,
+    // Server,
+}
+
+pub struct Chat {
+    pub chat_type: ChatType,
+    pub messages: Vec<Message>,
+    pub typing_message: String,
+}
+
+pub enum MessageType {
+    Normal,
+    Unsent,
+    SystemError,
+}
+
+pub struct Message {
+    pub id: String,
+    pub time: String,
+    pub author: String,
+
+    pub text: String,
+
+    pub message_type: MessageType,
 }

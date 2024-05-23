@@ -2,10 +2,7 @@ use std::io::Result;
 
 use crossterm::event::{self, Event, KeyCode};
 
-use crate::{
-    api::MessageItem,
-    app::{App, AppState},
-};
+use crate::app::{App, AppState, Message, MessageType};
 
 pub async fn handle_events(app: &mut App) -> Result<()> {
     if let Event::Key(key) = event::read()? {
@@ -23,10 +20,12 @@ pub async fn handle_events(app: &mut App) -> Result<()> {
                 typing_message.pop();
             }
             KeyCode::Enter => {
-                let message = MessageItem {
+                let message = Message {
                     id: "".into(),
+                    time: "".into(),
+                    author: "You".into(),
                     text: typing_message.clone(),
-                    created_at: "".into(),
+                    message_type: MessageType::Normal,
                 };
                 typing_message.clear();
 

@@ -49,22 +49,22 @@ impl Api {
         }
     }
 
-    pub async fn fetch_messages(&self) -> Result<ApiResponse, ApiError> {
+    pub async fn fetch_messages(&self) -> Result<ApiResponse, anyhow::Error> {
         let response = self.client.get(&self.message_list_url).send().await?;
         if response.status().is_success() {
             match response.json::<ApiResponse>().await {
                 Ok(api_response) => Ok(api_response),
-                Err(e) => {
-                    eprintln!("Error decoding response: {}", e);
-                    Err(ApiError::Reqwest(anyhow!("Failed to fetch messages")))
-                }
+                Err(e) => Err(anyhow!(format!(
+                    "Error when trying to parse messages: {}",
+                    e
+                ))),
             }
         } else {
-            Err(ApiError::Reqwest(anyhow!("Failed to fetch messages")))
+            Err(anyhow!("Failed to fetch messages"))
         }
     }
 
-    pub async fn send_message(&self, message_text: &String) -> Result<(), ApiError> {
+    pub async fn send_message(&self, message_text: &String) -> Result<(), anyhow::Error> {
         let response = self
             .client
             .post(&self.message_post_url)
@@ -73,8 +73,7 @@ impl Api {
             .await?;
 
         if !response.status().is_success() {
-            eprintln!("Failed to send message: {}", response.status());
-            Err(ApiError::Reqwest(anyhow!("Failed to send message")))
+            Err(anyhow!("Failed to send message"))
         } else {
             Ok(())
         }
