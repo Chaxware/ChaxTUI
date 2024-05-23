@@ -27,11 +27,11 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> App {
+    pub fn new(backend_base_url: String) -> App {
         App {
             app_state: AppState::Active,
             current_screen: CurrentScreen::Chat,
-            api: Api::new(),
+            api: Api::new(backend_base_url),
             chats: vec![Chat {
                 chat_type: ChatType::DM,
                 messages: Vec::new(),

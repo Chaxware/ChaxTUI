@@ -41,11 +41,11 @@ impl From<serde_json::Error> for ApiError {
 }
 
 impl Api {
-    pub fn new() -> Api {
+    pub fn new(backend_base_url: String) -> Api {
         Api {
             client: Client::new(),
-            message_list_url: "http://localhost:8787/chat".into(),
-            message_post_url: "http://localhost:8787/chat/send".into(),
+            message_list_url: format!("{}/chat", backend_base_url),
+            message_post_url: format!("{}/chat/send", backend_base_url),
         }
     }
 
