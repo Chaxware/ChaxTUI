@@ -1,5 +1,6 @@
 use std::io::Result;
 
+use ratatui::widgets::ListState;
 use ratatui::{backend::Backend, Terminal};
 
 use crate::api::Api;
@@ -35,7 +36,10 @@ impl App {
             chats: vec![Chat {
                 chat_type: ChatType::DM,
                 messages: Vec::new(),
+
                 typing_message: String::new(),
+                chat_list_state: ListState::default(),
+                visible_messages: None,
             }],
             active_chat: 0,
         }
@@ -106,7 +110,10 @@ pub enum ChatType {
 pub struct Chat {
     pub chat_type: ChatType,
     pub messages: Vec<Message>,
+
     pub typing_message: String,
+    pub chat_list_state: ListState,
+    pub visible_messages: Option<usize>,
 }
 
 pub enum MessageType {

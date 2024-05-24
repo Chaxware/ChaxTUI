@@ -10,12 +10,26 @@ pub async fn handle_events(app: &mut App) -> Result<()> {
             return Ok(());
         }
 
-        // let active_chat = &app.chats[app.active_chat.unwrap()];
+        let visible_messages = app.chats[app.active_chat].visible_messages;
+        let total_messages = app.chats[app.active_chat].messages.len();
         let typing_message = &mut app.chats[app.active_chat].typing_message;
         match key.code {
             KeyCode::Esc => {
                 app.app_state = AppState::Exit;
             }
+
+            KeyCode::PageUp if visible_messages.is_some() => {
+                let current_offset = app.chats[app.active_chat].chat_list_state.offset();
+                if current_offset + visible_messages.unwrap() < total_messages {
+                    *app.chats[app.active_chat].chat_list_state.offset_mut() = current_offset + 1;
+                }
+            }
+            KeyCode::PageDown => {
+                let current_offset = app.chats[app.active_chat].chat_list_state.offset();
+                *app.chats[app.active_chat].chat_list_state.offset_mut() =
+                    current_offset.saturating_sub(1);
+            }
+
             KeyCode::Backspace if !typing_message.is_empty() => {
                 typing_message.pop();
             }

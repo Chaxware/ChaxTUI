@@ -51,6 +51,10 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
     }
     message_list.reverse();
 
+    if app.chats[app.active_chat].visible_messages.is_none() {
+        app.chats[app.active_chat].visible_messages = Some(chunks[1].height as usize / 2 - 2);
+    }
+
     let chat_window = List::new(message_list)
         .block(
             Block::default()
@@ -58,8 +62,13 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
                 .border_type(BorderType::Rounded)
                 .padding(Padding::new(2, 2, 1, 0)),
         )
-        .direction(ListDirection::BottomToTop);
-    frame.render_widget(chat_window, chunks[1]);
+        .direction(ListDirection::BottomToTop)
+        .highlight_style(Style::default().bg(Color::Green));
+    frame.render_stateful_widget(
+        chat_window,
+        chunks[1],
+        &mut app.chats[app.active_chat].chat_list_state,
+    );
 
     // Message Box
     let active_chat = &app.chats[app.active_chat];
