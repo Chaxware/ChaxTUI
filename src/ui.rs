@@ -1,8 +1,11 @@
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Margin},
     style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, List, ListDirection, ListItem, Padding, Paragraph},
+    widgets::{
+        Block, BorderType, Borders, List, ListDirection, ListItem, Padding, Paragraph, Scrollbar,
+        ScrollbarOrientation, ScrollbarState,
+    },
     Frame,
 };
 
@@ -55,6 +58,20 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
         app.chats[app.active_chat].visible_messages = Some(chunks[1].height as usize / 2 - 2);
     }
 
+    let total_messages = app.chats[app.active_chat].messages.len();
+    let visible_messages = app.chats[app.active_chat].visible_messages.unwrap();
+
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .track_symbol(None)
+        .begin_symbol(None)
+        .end_symbol(None);
+    let mut scrollbar_state = ScrollbarState::new(total_messages.saturating_sub(visible_messages))
+        .position(
+            total_messages
+                .saturating_sub(visible_messages + 1)
+                .saturating_sub(app.chats[app.active_chat].chat_list_state.offset()),
+        );
+
     let chat_window = List::new(message_list)
         .block(
             Block::default()
@@ -68,6 +85,14 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
         chat_window,
         chunks[1],
         &mut app.chats[app.active_chat].chat_list_state,
+    );
+    frame.render_stateful_widget(
+        scrollbar,
+        chunks[1].inner(&Margin {
+            vertical: 1,
+            horizontal: 0,
+        }),
+        &mut scrollbar_state,
     );
 
     // Message Box
