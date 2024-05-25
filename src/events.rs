@@ -4,51 +4,58 @@ use crossterm::event::{self, Event, KeyCode};
 
 use crate::app::{App, AppState, Message, MessageType};
 
-pub async fn handle_events(app: &mut App<'_>) -> Result<()> {
+pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
+    let event = event::read()?;
     let chat = &mut app.chats[app.active_chat];
 
-    if let Event::Key(key) = event::read()? {
-        if key.kind == event::KeyEventKind::Release {
-            return Ok(());
-        }
-
-        match key.code {
+    match event {
+        Event::Key(key) if key.kind != event::KeyEventKind::Release => match key.code {
             KeyCode::Esc => {
                 app.app_state = AppState::Exit;
             }
 
-            KeyCode::PageUp | KeyCode::Up if chat.visible_messages.is_some() => {
-                let current_offset = chat.chat_list_state.offset();
-                if current_offset + chat.visible_messages.unwrap() < chat.messages.len() {
-                    *app.chats[app.active_chat].chat_list_state.offset_mut() = current_offset + 1;
+            KeyCode::PageUp | KeyCode::Up if chat.ui_state.visible_messages.is_some() => {
+                let current_offset = chat.ui_state.chat_list_state.offset();
+                if current_offset + chat.ui_state.visible_messages.unwrap() < chat.messages.len() {
+                    *app.chats[app.active_chat]
+                        .ui_state
+                        .chat_list_state
+                        .offset_mut() = current_offset + 1;
                 }
             }
             KeyCode::PageDown | KeyCode::Down => {
-                let current_offset = app.chats[app.active_chat].chat_list_state.offset();
-                *app.chats[app.active_chat].chat_list_state.offset_mut() =
-                    current_offset.saturating_sub(1);
+                let current_offset = app.chats[app.active_chat].ui_state.chat_list_state.offset();
+                *app.chats[app.active_chat]
+                    .ui_state
+                    .chat_list_state
+                    .offset_mut() = current_offset.saturating_sub(1);
             }
 
-            KeyCode::Backspace if !chat.typing_message.is_empty() => {
-                chat.typing_message.pop();
+            KeyCode::Backspace if !chat.ui_state.typing_message.is_empty() => {
+                chat.ui_state.typing_message.pop();
             }
-            KeyCode::Enter if !chat.typing_message.is_empty() => {
+            KeyCode::Enter if !chat.ui_state.typing_message.is_empty() => {
                 let message = Message {
                     id: "".into(),
                     time: "".into(),
                     author: "You".into(),
-                    text: chat.typing_message.clone(),
+                    text: chat.ui_state.typing_message.clone(),
                     message_type: MessageType::Normal,
                 };
-                chat.typing_message.clear();
+                chat.ui_state.typing_message.clear();
 
                 chat.send_message(message).await;
             }
             KeyCode::Char(value) => {
-                chat.typing_message.push(value);
+                chat.ui_state.typing_message.push(value);
             }
             _ => {}
+        },
+        Event::Resize(_, _) => {
+            return Ok(true);
         }
+        _ => {}
     }
-    Ok(())
+
+    Ok(false)
 }
