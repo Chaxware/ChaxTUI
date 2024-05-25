@@ -17,13 +17,13 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<()> {
                 app.app_state = AppState::Exit;
             }
 
-            KeyCode::PageUp if chat.visible_messages.is_some() => {
+            KeyCode::PageUp | KeyCode::Up if chat.visible_messages.is_some() => {
                 let current_offset = chat.chat_list_state.offset();
                 if current_offset + chat.visible_messages.unwrap() < chat.messages.len() {
                     *app.chats[app.active_chat].chat_list_state.offset_mut() = current_offset + 1;
                 }
             }
-            KeyCode::PageDown => {
+            KeyCode::PageDown | KeyCode::Down => {
                 let current_offset = app.chats[app.active_chat].chat_list_state.offset();
                 *app.chats[app.active_chat].chat_list_state.offset_mut() =
                     current_offset.saturating_sub(1);
