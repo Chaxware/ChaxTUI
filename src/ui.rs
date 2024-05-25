@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Margin},
+    layout::{Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{
@@ -9,9 +9,9 @@ use ratatui::{
     Frame,
 };
 
-use crate::app::{App, MessageType};
+use crate::app::{Chat, MessageType};
 
-pub fn draw_ui(frame: &mut Frame, app: &mut App) {
+pub fn draw_ui(frame: &mut Frame, chat: &mut Chat) {
     // Define layout
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -23,14 +23,20 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
         .split(frame.size());
 
     // Wordmark
-    let wordmark = Paragraph::new("Chax")
-        .centered()
-        .block(Block::default().padding(Padding::new(0, 0, 1, 0)));
-    frame.render_widget(wordmark, chunks[0]);
+    frame.render_widget(
+        Paragraph::new("Chax")
+            .centered()
+            .block(Block::default().padding(Padding::new(0, 0, 1, 0))),
+        chunks[0],
+    );
 
-    // Chat Window
-    let mut message_list = Vec::new();
-    for message in &app.chats[app.active_chat].messages {
+    draw_chat_window(frame, chat, chunks[1]);
+    draw_message_box(frame, chat, chunks[2]);
+}
+
+pub fn refresh_chat(chat: &mut Chat) {
+    chat.chat_list_items = Vec::new();
+    for message in &chat.messages {
         let mut author_span = Span::raw(format!(" {} ", &message.author)).bold();
         let mut message_span = Span::from(message.text.clone());
 
@@ -47,19 +53,36 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
             }
         }
 
-        message_list.push(ListItem::from(vec![
+        chat.chat_list_items.push(ListItem::from(vec![
             Line::from(vec![author_span, Span::raw(": "), message_span]),
             Line::default(),
         ]));
     }
-    message_list.reverse();
+    chat.chat_list_items.reverse();
+}
 
-    if app.chats[app.active_chat].visible_messages.is_none() {
-        app.chats[app.active_chat].visible_messages = Some(chunks[1].height as usize / 2 - 2);
+fn draw_chat_window(frame: &mut Frame, chat: &mut Chat, area: Rect) {
+    if chat.visible_messages.is_none() {
+        chat.visible_messages = Some(area.height as usize / 2 - 2);
     }
 
-    let total_messages = app.chats[app.active_chat].messages.len();
-    let visible_messages = app.chats[app.active_chat].visible_messages.unwrap();
+    let chat_window = List::new(chat.chat_list_items.clone())
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .padding(Padding::new(2, 2, 1, 0)),
+        )
+        .direction(ListDirection::BottomToTop)
+        .highlight_style(Style::default().bg(Color::Green));
+    frame.render_stateful_widget(chat_window, area, &mut chat.chat_list_state);
+
+    draw_scrollbar(frame, chat, area);
+}
+
+fn draw_scrollbar(frame: &mut Frame, chat: &mut Chat, area: Rect) {
+    let total_messages = chat.messages.len();
+    let visible_messages = chat.visible_messages.unwrap();
 
     let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
         .track_symbol(None)
@@ -69,35 +92,20 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
         .position(
             total_messages
                 .saturating_sub(visible_messages + 1)
-                .saturating_sub(app.chats[app.active_chat].chat_list_state.offset()),
+                .saturating_sub(chat.chat_list_state.offset()),
         );
-
-    let chat_window = List::new(message_list)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .padding(Padding::new(2, 2, 1, 0)),
-        )
-        .direction(ListDirection::BottomToTop)
-        .highlight_style(Style::default().bg(Color::Green));
-    frame.render_stateful_widget(
-        chat_window,
-        chunks[1],
-        &mut app.chats[app.active_chat].chat_list_state,
-    );
     frame.render_stateful_widget(
         scrollbar,
-        chunks[1].inner(&Margin {
+        area.inner(&Margin {
             vertical: 1,
             horizontal: 0,
         }),
         &mut scrollbar_state,
     );
+}
 
-    // Message Box
-    let active_chat = &app.chats[app.active_chat];
-    let mut typing_message = active_chat.typing_message.clone();
+fn draw_message_box(frame: &mut Frame, chat: &mut Chat, area: Rect) {
+    let mut typing_message = chat.typing_message.clone();
     let mut empty_message = false;
     if typing_message.is_empty() {
         typing_message = String::from("Write a message...");
@@ -115,5 +123,5 @@ pub fn draw_ui(frame: &mut Frame, app: &mut App) {
             .border_type(BorderType::Rounded)
             .padding(Padding::new(2, 0, 1, 0)),
     );
-    frame.render_widget(message_box, chunks[2]);
+    frame.render_widget(message_box, area);
 }
