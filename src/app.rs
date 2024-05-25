@@ -1,11 +1,10 @@
 use std::io::Result;
 
-use ratatui::widgets::{ListItem, ListState};
 use ratatui::{backend::Backend, Terminal};
 
 use crate::api::Api;
 use crate::events::handle_events;
-use crate::ui::{self, draw_ui, refresh_chat};
+use crate::ui::{draw_ui, refresh_chat, UiState};
 
 pub enum CurrentScreen {
     Chat,
@@ -37,11 +36,12 @@ impl<'a> App<'a> {
 
     pub async fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         self.chats[self.active_chat].update_messages().await;
-        terminal.draw(|frame| draw_ui(frame, &mut self.chats[self.active_chat]))?;
+        terminal.draw(|frame| draw_ui(frame, &mut self.chats[self.active_chat], true))?;
 
         while self.app_state != AppState::Exit {
-            handle_events(self).await?;
-            terminal.draw(|frame| draw_ui(frame, &mut self.chats[self.active_chat]))?;
+            let state_changed = handle_events(self).await?;
+            terminal
+                .draw(|frame| draw_ui(frame, &mut self.chats[self.active_chat], state_changed))?;
         }
         Ok(())
     }
@@ -75,11 +75,7 @@ pub struct Chat<'a> {
     pub chat_type: ChatType,
     pub messages: Vec<Message>,
 
-    pub typing_message: String,
-    pub chat_list_items: Vec<ListItem<'a>>,
-
-    pub chat_list_state: ListState,
-    pub visible_messages: Option<usize>,
+    pub ui_state: UiState<'a>,
 }
 
 impl<'a> Chat<'a> {
@@ -90,14 +86,10 @@ impl<'a> Chat<'a> {
 
             messages: Vec::new(),
 
-            typing_message: String::new(),
-            chat_list_items: Vec::new(),
-
-            chat_list_state: ListState::default(),
-            visible_messages: None,
+            ui_state: UiState::new(),
         };
 
-        ui::refresh_chat(&mut new_chat);
+        refresh_chat(&mut new_chat);
 
         new_chat
     }
