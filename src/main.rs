@@ -6,7 +6,10 @@ use std::{
 use app::App;
 use crossterm::{
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{
+        disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
+        LeaveAlternateScreen,
+    },
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 
@@ -27,6 +30,8 @@ async fn main() -> Result<()> {
 
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen)?;
+    execute!(stdout(), Clear(ClearType::Purge))?;
+    execute!(stdout(), Clear(ClearType::All))?;
 
     let terminal_backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(terminal_backend)?;
