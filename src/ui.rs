@@ -31,7 +31,9 @@ impl MessageStyle {
     }
 }
 
+// Resets the UI state
 pub fn load_ui(frame: &mut Frame, chat: &mut Chat) {
+    // Calculate window areas
     chat.ui_state.layout_areas = Some(
         Layout::default()
             .direction(Direction::Vertical)
@@ -43,10 +45,12 @@ pub fn load_ui(frame: &mut Frame, chat: &mut Chat) {
             .areas(frame.size()),
     );
 
+    // Reset message list and recalculate lines and word wrap
     refresh_chat(chat);
     calculate_visible_messages(chat);
 }
 
+// Main render function
 pub fn draw_ui(frame: &mut Frame, chat: &mut Chat) {
     let areas = chat.ui_state.layout_areas.unwrap_or_else(|| {
         panic!("UI is not loaded yet");
@@ -65,6 +69,7 @@ pub fn draw_ui(frame: &mut Frame, chat: &mut Chat) {
 }
 
 fn draw_chat_window(frame: &mut Frame, chat: &mut Chat, area: Rect) {
+    // Makes a new List from the already stored ListItem-s
     let chat_window = List::new(chat.ui_state.chat_list_items.clone())
         .block(
             Block::default()
@@ -73,6 +78,8 @@ fn draw_chat_window(frame: &mut Frame, chat: &mut Chat, area: Rect) {
                 .padding(Padding::new(2, 2, 1, 0)),
         )
         .direction(ListDirection::BottomToTop);
+
+    // Renders according to list state (tracking offset etc.)
     frame.render_stateful_widget(chat_window, area, &mut chat.ui_state.chat_list_state);
 
     draw_scrollbar(frame, chat, area);

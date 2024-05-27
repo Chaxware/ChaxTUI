@@ -8,10 +8,19 @@ use ratatui::{
 use crate::app::{Chat, Message, MessageType};
 
 pub struct ChatUiState<'a> {
+    // The areas of the windows
     pub layout_areas: Option<[Rect; 3]>,
+
+    // The currently typing message
     pub typing_message: String,
+
+    // The no. of visible messages at the top
     pub visible_messages: Option<usize>,
+
+    // Cache for the chat list items (i.e. messages)
     pub chat_list_items: Vec<ListItem<'a>>,
+
+    // The state of the list (offset etc.)
     pub chat_list_state: ListState,
 }
 
@@ -27,6 +36,9 @@ impl<'a> ChatUiState<'a> {
     }
 }
 
+// Calculates the no. of visible messages at the top, so that you can
+// actually see all the messages even with different no. of lines on
+// each message, and get an (almost) accurate scrollbar
 pub fn calculate_visible_messages(chat: &mut Chat) {
     if chat.messages.is_empty() {
         return;
@@ -47,6 +59,11 @@ pub fn calculate_visible_messages(chat: &mut Chat) {
         }
     }
 
+    // It has a maximum limit of about half the height of the window,
+    // as each message takes up at least 2 lines
+    //
+    // And the -1 is because we are offsetting from bottom, and
+    // without it, the top-most message might be inaccessible
     chat.ui_state.visible_messages = Some(
         visible_messages
             .saturating_sub(1)
@@ -54,10 +71,14 @@ pub fn calculate_visible_messages(chat: &mut Chat) {
     );
 }
 
+// Break a single line message into multiple lines if it doesn't fit
+// on the current window width
 pub fn wrap_message(message: &Message, max_width: usize) -> Vec<String> {
     let mut strings = Vec::new();
 
+    // For the author's name
     let pre_text_width = message.author.len() + 4;
+
     let mut scanner_start_position = 0;
     let mut message_length_left = message.text.len();
 
@@ -72,6 +93,7 @@ pub fn wrap_message(message: &Message, max_width: usize) -> Vec<String> {
 
         if available_width == 0 {
             if first_line {
+                // If the author's name takes up too much space
                 strings.push(String::new());
             } else {
                 break;
@@ -90,6 +112,7 @@ pub fn wrap_message(message: &Message, max_width: usize) -> Vec<String> {
             scanner_end_position = message.text.len();
         }
 
+        // Check for whitespace to break off the line with
         while scanner_end_position > scanner_start_position {
             let c = message.text.as_bytes()[scanner_end_position - 1];
             if c.is_ascii_whitespace() {
@@ -105,9 +128,11 @@ pub fn wrap_message(message: &Message, max_width: usize) -> Vec<String> {
             }
         }
 
+        // Otherwise just break whatever the width cuts on (might be mid-word)
         strings.push(message.text[scanner_start_position..scanner_end_position].to_string());
-
         scanner_start_position = scanner_end_position;
+
+        // Check for chain of whitespaces
         while scanner_start_position < message.text.len()
             && message.text.as_bytes()[scanner_start_position].is_ascii_whitespace()
         {
@@ -124,7 +149,10 @@ pub fn refresh_chat(chat: &mut Chat) {
     let max_width = (chat.ui_state.layout_areas.unwrap()[1].width as usize).saturating_sub(6);
 
     chat.ui_state.chat_list_items.clear();
+
+    // For each message in the local store, make a ListItem
     for message in &mut chat.messages {
+        // Message and Author name styling
         match message.message_type {
             MessageType::Normal => {
                 message.style.author = message.style.author.fg(Color::Cyan);
@@ -141,14 +169,20 @@ pub fn refresh_chat(chat: &mut Chat) {
         let author_span = Span::from(format!(" {} ", &message.author)).style(message.style.author);
 
         let mut lines: Vec<Line> = Vec::new();
+
+        // If everything fits snugly, just push it in easily
         if message.author.len() + message.text.len() + 4 <= max_width {
             lines.push(Line::from(vec![
                 author_span,
                 Span::from(": "),
                 Span::from(message.text.clone()).style(message.style.text),
             ]));
-        } else {
+        }
+        // Otherwise do some wrapping up
+        else {
+            // Get the multi-lined strings
             let line_strings = wrap_message(message, max_width);
+
             if !line_strings.is_empty() {
                 lines.push(Line::from(vec![
                     author_span,
@@ -161,13 +195,17 @@ pub fn refresh_chat(chat: &mut Chat) {
             }
         }
 
+        // Extra line for padding
         lines.push(Line::default());
 
-        message.lines = Some(lines.len());
+        message.lines = Some(lines.len()); // Update UI state
 
         chat.ui_state
             .chat_list_items
             .push(ListItem::new(Text::from(lines)));
     }
+
+    // Reverse the list, because we are doing a BottomToTop list
+    // So, the bottom-most message is index 0, and so on
     chat.ui_state.chat_list_items.reverse();
 }

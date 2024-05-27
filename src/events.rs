@@ -12,13 +12,18 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
     let chat = &mut app.chats[app.active_chat];
 
     match event {
+        // Only listen to key presses (not releases)
         Event::Key(key) if key.kind != event::KeyEventKind::Release => match key.code {
             KeyCode::Esc => {
                 app.app_state = AppState::Exit;
             }
 
             KeyCode::PageUp | KeyCode::Up if chat.ui_state.visible_messages.is_some() => {
+                // Increase list display offset
+
                 let current_offset = chat.ui_state.chat_list_state.offset();
+
+                // Only till top message is visible
                 if current_offset + chat.ui_state.visible_messages.unwrap() < chat.messages.len() {
                     *app.chats[app.active_chat]
                         .ui_state
@@ -27,6 +32,8 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
                 }
             }
             KeyCode::PageDown | KeyCode::Down => {
+                // Decrease list display offset
+
                 let current_offset = app.chats[app.active_chat].ui_state.chat_list_state.offset();
                 *app.chats[app.active_chat]
                     .ui_state
@@ -51,10 +58,13 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
 
                 chat.send_message(message).await;
 
+                // Bring scrolled chat back down to show sent message
                 *app.chats[app.active_chat]
                     .ui_state
                     .chat_list_state
                     .offset_mut() = 0;
+
+                // Set state changed; Reloads UI
                 return Ok(true);
             }
             KeyCode::Char(value) => {
@@ -63,10 +73,12 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
             _ => {}
         },
         Event::Resize(_, _) => {
+            // Set state changed; Reloads UI
             return Ok(true);
         }
         _ => {}
     }
 
+    // No state changes; Continue as normal
     Ok(false)
 }

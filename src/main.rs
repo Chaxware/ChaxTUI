@@ -20,25 +20,29 @@ mod ui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Take backend server url as cli argument
     let mut backend_base_url: String = env::args()
         .nth(1)
         .unwrap_or_else(|| "http://localhost:8787".into());
-
     if backend_base_url.ends_with('/') {
         backend_base_url.pop();
     }
 
+    // Enter TUI screen
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen)?;
     execute!(stdout(), Clear(ClearType::Purge))?;
     execute!(stdout(), Clear(ClearType::All))?;
 
+    // Initialize terminal backend
     let terminal_backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(terminal_backend)?;
 
+    // Initialize and run app
     let mut app = App::new(backend_base_url);
     app.run(&mut terminal).await?;
 
+    // Exit TUI screen
     disable_raw_mode()?;
     execute!(stdout(), LeaveAlternateScreen)?;
 
