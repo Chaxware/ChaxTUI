@@ -4,7 +4,8 @@ use ratatui::{backend::Backend, Terminal};
 
 use crate::api::Api;
 use crate::events::handle_events;
-use crate::ui::{draw_ui, refresh_chat, UiState};
+use crate::ui::chat::{refresh_chat, ChatUiState};
+use crate::ui::{draw_ui, load_ui, MessageStyle};
 
 pub enum CurrentScreen {
     Chat,
@@ -36,12 +37,20 @@ impl<'a> App<'a> {
 
     pub async fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         self.chats[self.active_chat].update_messages().await;
-        terminal.draw(|frame| draw_ui(frame, &mut self.chats[self.active_chat], true))?;
+        terminal.draw(|frame| {
+            load_ui(frame, &mut self.chats[self.active_chat]);
+            draw_ui(frame, &mut self.chats[self.active_chat]);
+        })?;
 
         while self.app_state != AppState::Exit {
             let state_changed = handle_events(self).await?;
-            terminal
-                .draw(|frame| draw_ui(frame, &mut self.chats[self.active_chat], state_changed))?;
+
+            terminal.draw(|frame| {
+                if state_changed {
+                    load_ui(frame, &mut self.chats[self.active_chat]);
+                }
+                draw_ui(frame, &mut self.chats[self.active_chat]);
+            })?;
         }
         Ok(())
     }
@@ -61,6 +70,9 @@ pub struct Message {
     pub text: String,
 
     pub message_type: MessageType,
+
+    pub lines: Option<usize>,
+    pub style: MessageStyle,
 }
 
 pub enum ChatType {
@@ -75,21 +87,19 @@ pub struct Chat<'a> {
     pub chat_type: ChatType,
     pub messages: Vec<Message>,
 
-    pub ui_state: UiState<'a>,
+    pub ui_state: ChatUiState<'a>,
 }
 
 impl<'a> Chat<'a> {
     pub fn new(chat_type: ChatType, backend_base_url: String) -> Self {
-        let mut new_chat = Self {
+        let new_chat = Self {
             api: Api::new(backend_base_url),
             chat_type,
 
             messages: Vec::new(),
 
-            ui_state: UiState::new(),
+            ui_state: ChatUiState::new(),
         };
-
-        refresh_chat(&mut new_chat);
 
         new_chat
     }
@@ -115,8 +125,9 @@ impl<'a> Chat<'a> {
             author: "System".into(),
             text: error,
             message_type: MessageType::SystemError,
+            lines: None,
+            style: MessageStyle::default(),
         });
-        refresh_chat(self);
     }
 
     pub async fn update_messages(&mut self) {
@@ -131,6 +142,8 @@ impl<'a> Chat<'a> {
                         author: "Someone".into(),
                         text: message.text,
                         message_type: MessageType::Normal,
+                        lines: None,
+                        style: MessageStyle::default(),
                     })
                 }
             }
@@ -138,6 +151,5 @@ impl<'a> Chat<'a> {
                 self.show_error(format!("Failed to fetch messages: {}", e));
             }
         }
-        refresh_chat(self);
     }
 }

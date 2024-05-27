@@ -2,7 +2,10 @@ use std::io::Result;
 
 use crossterm::event::{self, Event, KeyCode};
 
-use crate::app::{App, AppState, Message, MessageType};
+use crate::{
+    app::{App, AppState, Message, MessageType},
+    ui::MessageStyle,
+};
 
 pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
     let event = event::read()?;
@@ -41,10 +44,18 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
                     author: "You".into(),
                     text: chat.ui_state.typing_message.clone(),
                     message_type: MessageType::Normal,
+                    lines: None,
+                    style: MessageStyle::default(),
                 };
                 chat.ui_state.typing_message.clear();
 
                 chat.send_message(message).await;
+
+                *app.chats[app.active_chat]
+                    .ui_state
+                    .chat_list_state
+                    .offset_mut() = 0;
+                return Ok(true);
             }
             KeyCode::Char(value) => {
                 chat.ui_state.typing_message.push(value);

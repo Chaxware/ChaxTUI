@@ -1,96 +1,67 @@
+use core::panic;
+
 use ratatui::{
     layout::{Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Style, Stylize},
-    text::{Line, Span, Text},
+    text::Line,
     widgets::{
-        Block, BorderType, Borders, List, ListDirection, ListItem, ListState, Padding, Paragraph,
-        Scrollbar, ScrollbarOrientation, ScrollbarState,
+        Block, BorderType, Borders, List, ListDirection, Padding, Paragraph, Scrollbar,
+        ScrollbarOrientation, ScrollbarState,
     },
     Frame,
 };
 
-use crate::app::{Chat, MessageType};
+use crate::app::Chat;
 
-pub struct UiState<'a> {
-    pub layout_areas: Option<[Rect; 3]>,
-    pub typing_message: String,
-    pub visible_messages: Option<usize>,
-    pub chat_list_items: Vec<ListItem<'a>>,
-    pub chat_list_state: ListState,
+use self::chat::{calculate_visible_messages, refresh_chat};
+
+pub mod chat;
+
+pub struct MessageStyle {
+    pub text: Style,
+    pub author: Style,
 }
 
-impl<'a> UiState<'a> {
-    pub fn new() -> Self {
+impl MessageStyle {
+    pub fn default() -> Self {
         Self {
-            layout_areas: None,
-            typing_message: String::new(),
-            visible_messages: None,
-            chat_list_items: Vec::new(),
-            chat_list_state: ListState::default(),
+            text: Style::default(),
+            author: Style::default().bold(),
         }
     }
 }
 
-pub fn draw_ui(frame: &mut Frame, chat: &mut Chat, state_changed: bool) {
-    if state_changed {
-        chat.ui_state.layout_areas = Some(
-            Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(2),
-                    Constraint::Min(3),
-                    Constraint::Length(5),
-                ])
-                .areas(frame.size()),
-        );
-        chat.ui_state.visible_messages =
-            Some(chat.ui_state.layout_areas.unwrap()[1].height as usize / 2 - 2);
-        refresh_chat(chat);
-    }
+pub fn load_ui(frame: &mut Frame, chat: &mut Chat) {
+    chat.ui_state.layout_areas = Some(
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(2),
+                Constraint::Min(3),
+                Constraint::Length(5),
+            ])
+            .areas(frame.size()),
+    );
 
-    if chat.ui_state.layout_areas.is_none() {
-        return;
-    }
+    refresh_chat(chat);
+    calculate_visible_messages(chat);
+}
+
+pub fn draw_ui(frame: &mut Frame, chat: &mut Chat) {
+    let areas = chat.ui_state.layout_areas.unwrap_or_else(|| {
+        panic!("UI is not loaded yet");
+    });
 
     // Wordmark
     frame.render_widget(
         Paragraph::new("Chax")
             .centered()
             .block(Block::default().padding(Padding::new(0, 0, 1, 0))),
-        chat.ui_state.layout_areas.unwrap()[0],
+        areas[0],
     );
 
-    draw_chat_window(frame, chat, chat.ui_state.layout_areas.unwrap()[1]);
-    draw_message_box(frame, chat, chat.ui_state.layout_areas.unwrap()[2]);
-}
-
-pub fn refresh_chat(chat: &mut Chat) {
-    chat.ui_state.chat_list_items = Vec::new();
-    for message in &chat.messages {
-        let mut author_span = Span::raw(format!(" {} ", &message.author)).bold();
-        let mut message_span = Span::from(message.text.clone());
-
-        match message.message_type {
-            MessageType::Normal => {
-                author_span = author_span.fg(Color::Cyan);
-            }
-            MessageType::Unsent => {
-                message_span = message_span.fg(Color::DarkGray);
-            }
-            MessageType::SystemError => {
-                author_span = author_span.bg(Color::Red).fg(Color::DarkGray);
-                message_span = message_span.fg(Color::Red);
-            }
-        }
-
-        chat.ui_state
-            .chat_list_items
-            .push(ListItem::new(Text::from(vec![
-                Line::from(vec![author_span, Span::raw(": "), message_span]),
-                Line::default(),
-            ])));
-    }
-    chat.ui_state.chat_list_items.reverse();
+    draw_chat_window(frame, chat, areas[1]);
+    draw_message_box(frame, chat, areas[2]);
 }
 
 fn draw_chat_window(frame: &mut Frame, chat: &mut Chat, area: Rect) {
@@ -108,6 +79,10 @@ fn draw_chat_window(frame: &mut Frame, chat: &mut Chat, area: Rect) {
 }
 
 fn draw_scrollbar(frame: &mut Frame, chat: &mut Chat, area: Rect) {
+    if chat.messages.is_empty() || chat.ui_state.visible_messages.is_none() {
+        return;
+    }
+
     let total_messages = chat.messages.len();
     let visible_messages = chat.ui_state.visible_messages.unwrap();
 
@@ -115,12 +90,15 @@ fn draw_scrollbar(frame: &mut Frame, chat: &mut Chat, area: Rect) {
         .track_symbol(None)
         .begin_symbol(None)
         .end_symbol(None);
-    let mut scrollbar_state = ScrollbarState::new(total_messages.saturating_sub(visible_messages))
-        .position(
-            total_messages
-                .saturating_sub(visible_messages + 1)
-                .saturating_sub(chat.ui_state.chat_list_state.offset()),
-        );
+    let mut scrollbar_state = ScrollbarState::new(
+        total_messages
+            .saturating_sub(chat.ui_state.layout_areas.unwrap()[1].height as usize / 2 - 2),
+    )
+    .position(
+        total_messages
+            .saturating_sub(visible_messages + 1)
+            .saturating_sub(chat.ui_state.chat_list_state.offset()),
+    );
     frame.render_stateful_widget(
         scrollbar,
         area.inner(&Margin {
@@ -133,13 +111,12 @@ fn draw_scrollbar(frame: &mut Frame, chat: &mut Chat, area: Rect) {
 
 fn draw_message_box(frame: &mut Frame, chat: &mut Chat, area: Rect) {
     let mut typing_message = chat.ui_state.typing_message.clone();
-    let mut empty_message = false;
-    if typing_message.is_empty() {
+    let is_empty = typing_message.is_empty();
+    if is_empty {
         typing_message = String::from("Write a message...");
-        empty_message = true;
     }
 
-    let message_box = Paragraph::new(Line::from(typing_message).style(if empty_message {
+    let message_box = Paragraph::new(Line::from(typing_message).style(if is_empty {
         Style::default().fg(Color::DarkGray)
     } else {
         Style::default()
