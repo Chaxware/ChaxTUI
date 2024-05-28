@@ -168,4 +168,25 @@ impl<'a> Chat<'a> {
             }
         }
     }
+
+    pub fn scroll_up(&mut self) {
+        // Increase list display offset
+
+        if self.ui_state.visible_messages.is_none() {
+            return;
+        }
+
+        let current_offset = self.ui_state.chat_list_state.offset();
+
+        // Only till top message is visible
+        if current_offset + self.ui_state.visible_messages.unwrap() < self.messages.len() {
+            *self.ui_state.chat_list_state.offset_mut() = current_offset + 1;
+        }
+    }
+
+    pub fn scroll_down(&mut self) {
+        // Decrease list display offset
+        let current_offset = self.ui_state.chat_list_state.offset();
+        *self.ui_state.chat_list_state.offset_mut() = current_offset.saturating_sub(1);
+    }
 }

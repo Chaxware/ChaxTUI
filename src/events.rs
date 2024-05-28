@@ -1,6 +1,7 @@
 use std::io::Result;
 
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::{self, Event, KeyCode, MouseEventKind};
+use ratatui::layout::Position;
 
 use crate::{
     app::{App, AppState, Message, MessageType},
@@ -18,27 +19,11 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
                 app.app_state = AppState::Exit;
             }
 
-            KeyCode::PageUp | KeyCode::Up if chat.ui_state.visible_messages.is_some() => {
-                // Increase list display offset
-
-                let current_offset = chat.ui_state.chat_list_state.offset();
-
-                // Only till top message is visible
-                if current_offset + chat.ui_state.visible_messages.unwrap() < chat.messages.len() {
-                    *app.chats[app.active_chat]
-                        .ui_state
-                        .chat_list_state
-                        .offset_mut() = current_offset + 1;
-                }
+            KeyCode::PageUp | KeyCode::Up => {
+                chat.scroll_up();
             }
             KeyCode::PageDown | KeyCode::Down => {
-                // Decrease list display offset
-
-                let current_offset = app.chats[app.active_chat].ui_state.chat_list_state.offset();
-                *app.chats[app.active_chat]
-                    .ui_state
-                    .chat_list_state
-                    .offset_mut() = current_offset.saturating_sub(1);
+                chat.scroll_down();
             }
 
             KeyCode::Backspace if !chat.ui_state.typing_message.is_empty() => {
@@ -69,6 +54,25 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
             }
             KeyCode::Char(value) => {
                 chat.ui_state.typing_message.push(value);
+            }
+            _ => {}
+        },
+        Event::Mouse(mouse_event) => match mouse_event.kind {
+            MouseEventKind::ScrollUp => {
+                if chat.ui_state.layout_areas.unwrap()[1].contains(Position {
+                    x: mouse_event.column,
+                    y: mouse_event.row,
+                }) {
+                    chat.scroll_up();
+                }
+            }
+            MouseEventKind::ScrollDown => {
+                if chat.ui_state.layout_areas.unwrap()[1].contains(Position {
+                    x: mouse_event.column,
+                    y: mouse_event.row,
+                }) {
+                    chat.scroll_down();
+                }
             }
             _ => {}
         },

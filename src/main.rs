@@ -5,6 +5,7 @@ use std::{
 
 use app::App;
 use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
@@ -31,6 +32,7 @@ async fn main() -> Result<()> {
     // Enter TUI screen
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen)?;
+    execute!(stdout(), EnableMouseCapture)?;
     execute!(stdout(), Clear(ClearType::Purge))?;
     execute!(stdout(), Clear(ClearType::All))?;
 
@@ -44,6 +46,7 @@ async fn main() -> Result<()> {
 
     // Exit TUI screen
     disable_raw_mode()?;
+    execute!(stdout(), DisableMouseCapture)?;
     execute!(stdout(), LeaveAlternateScreen)?;
 
     Ok(())
