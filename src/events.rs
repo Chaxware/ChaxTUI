@@ -1,11 +1,11 @@
 use std::io::Result;
 
-use crossterm::event::{self, Event, KeyCode, MouseEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyModifiers, MouseEventKind};
 use ratatui::layout::Position;
 
 use crate::{
     app::{App, AppState, Message, MessageType},
-    ui::MessageStyle,
+    ui::{reset_message_box, MessageStyle},
 };
 
 pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
@@ -26,20 +26,41 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
                 chat.scroll_down();
             }
 
-            KeyCode::Backspace if !chat.ui_state.typing_message.is_empty() => {
-                chat.ui_state.typing_message.pop();
+            KeyCode::Char('n')
+                if key.modifiers.contains(KeyModifiers::CONTROL)
+                    && !chat.message_box.is_empty() =>
+            {
+                chat.message_box.insert_newline();
+                chat.ui_state.typing_lines += 1;
+                return Ok(true);
             }
-            KeyCode::Enter if !chat.ui_state.typing_message.is_empty() => {
+
+            KeyCode::Enter => {
+                if chat.message_box.is_empty() {
+                    return Ok(false);
+                }
+
+                let mut message_text = String::new();
+                for line in chat.message_box.lines() {
+                    if !line.trim().is_empty() && !line.starts_with('\n') {
+                        message_text.push_str((line.to_owned() + "\n").as_str());
+                    }
+                }
+
+                if message_text.is_empty() {
+                    return Ok(false);
+                }
+
                 let message = Message {
                     id: "".into(),
                     time: "".into(),
                     author: "You".into(),
-                    text: chat.ui_state.typing_message.clone(),
+                    text: message_text,
                     message_type: MessageType::Normal,
                     lines: None,
                     style: MessageStyle::default(),
                 };
-                chat.ui_state.typing_message.clear();
+                reset_message_box(chat);
 
                 chat.send_message(message).await;
 
@@ -52,10 +73,9 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
                 // Set state changed; Reloads UI
                 return Ok(true);
             }
-            KeyCode::Char(value) => {
-                chat.ui_state.typing_message.push(value);
+            _ => {
+                chat.message_box.input(event);
             }
-            _ => {}
         },
         Event::Mouse(mouse_event) => match mouse_event.kind {
             MouseEventKind::ScrollUp => {

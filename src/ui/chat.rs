@@ -5,14 +5,14 @@ use ratatui::{
     widgets::{ListItem, ListState},
 };
 
-use crate::app::{Chat, Message, MessageType};
+use crate::app::{Chat, MessageType};
 
 pub struct ChatUiState<'a> {
     // The areas of the windows
     pub layout_areas: Option<[Rect; 3]>,
 
-    // The currently typing message
-    pub typing_message: String,
+    // The no. of lines in the currently typing message
+    pub typing_lines: u16,
 
     // The no. of visible messages at the top
     pub visible_messages: Option<usize>,
@@ -28,7 +28,7 @@ impl<'a> ChatUiState<'a> {
     pub fn new() -> Self {
         Self {
             layout_areas: None,
-            typing_message: String::new(),
+            typing_lines: 1,
             visible_messages: None,
             chat_list_items: Vec::new(),
             chat_list_state: ListState::default(),
@@ -71,20 +71,22 @@ pub fn calculate_visible_messages(chat: &mut Chat) {
     );
 }
 
-// Break a single line message into multiple lines if it doesn't fit
+// Break a single line sentence into multiple lines if it doesn't fit
 // on the current window width
-pub fn wrap_message(message: &Message, max_width: usize) -> Vec<String> {
+pub fn wrap_sentence(sentence: &String, max_width: usize, pre_text_width: usize) -> Vec<String> {
     let mut strings = Vec::new();
 
-    // For the author's name
-    let pre_text_width = message.author.len() + 4;
+    if sentence.is_empty() {
+        strings.push(String::from(""));
+        return strings;
+    }
 
     let mut scanner_start_position = 0;
-    let mut message_length_left = message.text.len();
+    let mut sentence_length_left = sentence.len();
 
     let mut first_line = true;
 
-    while message_length_left > 0 {
+    while sentence_length_left > 0 {
         let available_width = if first_line {
             max_width.saturating_sub(pre_text_width)
         } else {
@@ -102,19 +104,19 @@ pub fn wrap_message(message: &Message, max_width: usize) -> Vec<String> {
 
         first_line = false;
 
-        if message_length_left <= available_width {
-            strings.push(message.text[scanner_start_position..].to_string());
+        if sentence_length_left <= available_width {
+            strings.push(sentence[scanner_start_position..].to_string());
             break;
         }
 
         let mut scanner_end_position = scanner_start_position + available_width;
-        if scanner_end_position >= message.text.len() {
-            scanner_end_position = message.text.len();
+        if scanner_end_position >= sentence.len() {
+            scanner_end_position = sentence.len();
         }
 
         // Check for whitespace to break off the line with
         while scanner_end_position > scanner_start_position {
-            let c = message.text.as_bytes()[scanner_end_position - 1];
+            let c = sentence.as_bytes()[scanner_end_position - 1];
             if c.is_ascii_whitespace() {
                 break;
             }
@@ -123,23 +125,23 @@ pub fn wrap_message(message: &Message, max_width: usize) -> Vec<String> {
 
         if scanner_end_position == scanner_start_position {
             scanner_end_position = scanner_start_position + available_width;
-            if scanner_end_position > message.text.len() {
-                scanner_end_position = message.text.len();
+            if scanner_end_position > sentence.len() {
+                scanner_end_position = sentence.len();
             }
         }
 
         // Otherwise just break whatever the width cuts on (might be mid-word)
-        strings.push(message.text[scanner_start_position..scanner_end_position].to_string());
+        strings.push(sentence[scanner_start_position..scanner_end_position].to_string());
         scanner_start_position = scanner_end_position;
 
         // Check for chain of whitespaces
-        while scanner_start_position < message.text.len()
-            && message.text.as_bytes()[scanner_start_position].is_ascii_whitespace()
+        while scanner_start_position < sentence.len()
+            && sentence.as_bytes()[scanner_start_position].is_ascii_whitespace()
         {
             scanner_start_position += 1;
         }
 
-        message_length_left = message.text.len().saturating_sub(scanner_start_position);
+        sentence_length_left = sentence.len().saturating_sub(scanner_start_position);
     }
 
     strings
@@ -170,33 +172,35 @@ pub fn refresh_chat(chat: &mut Chat) {
 
         let mut lines: Vec<Line> = Vec::new();
 
-        // If everything fits snugly, just push it in easily
-        if message.author.len() + message.text.len() + 4 <= max_width {
-            lines.push(Line::from(vec![
-                author_span,
-                Span::from(": "),
-                Span::from(message.text.clone()).style(message.style.text),
-            ]));
-        }
-        // Otherwise do some wrapping up
-        else {
-            // Get the multi-lined strings
-            let line_strings = wrap_message(message, max_width);
+        let mut line_strings = Vec::new();
+        let mut first_line = true;
+        for message_line in message.text.split('\n') {
+            let wrapped_lines = wrap_sentence(
+                &message_line.to_string(),
+                max_width,
+                if first_line {
+                    message.author.len() + 4
+                } else {
+                    0
+                },
+            );
+            first_line = false;
 
-            if !line_strings.is_empty() {
-                lines.push(Line::from(vec![
-                    author_span,
-                    Span::from(": "),
-                    Span::from(line_strings[0].clone()).style(message.style.text),
-                ]));
-                for line_string in line_strings.iter().skip(1) {
-                    lines.push(Line::from(line_string.clone()).style(message.style.text));
-                }
+            for line in wrapped_lines {
+                line_strings.push(line);
             }
         }
 
-        // Extra line for padding
-        lines.push(Line::default());
+        if !line_strings.is_empty() {
+            lines.push(Line::from(vec![
+                author_span,
+                Span::from(": "),
+                Span::from(line_strings[0].clone()).style(message.style.text),
+            ]));
+            for line_string in line_strings.iter().skip(1) {
+                lines.push(Line::from(line_string.clone()).style(message.style.text));
+            }
+        }
 
         message.lines = Some(lines.len()); // Update UI state
 
