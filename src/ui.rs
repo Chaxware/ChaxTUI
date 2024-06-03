@@ -1,15 +1,13 @@
-use core::panic;
-
 use ratatui::{
     layout::{Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Style, Stylize},
-    text::Line,
     widgets::{
         Block, BorderType, Borders, List, ListDirection, Padding, Paragraph, Scrollbar,
         ScrollbarOrientation, ScrollbarState,
     },
     Frame,
 };
+use tui_textarea::TextArea;
 
 use crate::app::Chat;
 
@@ -32,7 +30,7 @@ impl MessageStyle {
 }
 
 // Resets the UI state
-pub fn load_ui(frame: &mut Frame, chat: &mut Chat) {
+pub fn load_ui(frame: &mut Frame, chat: &mut Chat) -> Option<[Rect; 3]> {
     // Calculate window areas
     chat.ui_state.layout_areas = Some(
         Layout::default()
@@ -40,7 +38,7 @@ pub fn load_ui(frame: &mut Frame, chat: &mut Chat) {
             .constraints([
                 Constraint::Length(2),
                 Constraint::Min(3),
-                Constraint::Length(5),
+                Constraint::Length((chat.ui_state.typing_lines + 4).min(frame.size().height - 6)),
             ])
             .areas(frame.size()),
     );
@@ -48,13 +46,16 @@ pub fn load_ui(frame: &mut Frame, chat: &mut Chat) {
     // Reset message list and recalculate lines and word wrap
     refresh_chat(chat);
     calculate_visible_messages(chat);
+
+    chat.ui_state.layout_areas
 }
 
 // Main render function
 pub fn draw_ui(frame: &mut Frame, chat: &mut Chat) {
-    let areas = chat.ui_state.layout_areas.unwrap_or_else(|| {
-        panic!("UI is not loaded yet");
-    });
+    let areas = chat
+        .ui_state
+        .layout_areas
+        .unwrap_or_else(|| load_ui(frame, chat).unwrap());
 
     // Wordmark
     frame.render_widget(
@@ -116,23 +117,22 @@ fn draw_scrollbar(frame: &mut Frame, chat: &mut Chat, area: Rect) {
     );
 }
 
-fn draw_message_box(frame: &mut Frame, chat: &mut Chat, area: Rect) {
-    let mut typing_message = chat.ui_state.typing_message.clone();
-    let is_empty = typing_message.is_empty();
-    if is_empty {
-        typing_message = String::from("Write a message...");
-    }
+pub fn reset_message_box(chat: &mut Chat) {
+    chat.ui_state.typing_lines = 1;
 
-    let message_box = Paragraph::new(Line::from(typing_message).style(if is_empty {
-        Style::default().fg(Color::DarkGray)
-    } else {
-        Style::default()
-    }))
-    .block(
+    chat.message_box = TextArea::default();
+    chat.message_box.set_block(
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .padding(Padding::new(2, 0, 1, 0)),
     );
-    frame.render_widget(message_box, area);
+    chat.message_box.set_placeholder_text("Write a message...");
+    chat.message_box
+        .set_placeholder_style(Style::default().fg(Color::DarkGray));
+    chat.message_box.set_cursor_line_style(Style::default());
+}
+
+fn draw_message_box(frame: &mut Frame, chat: &mut Chat, area: Rect) {
+    frame.render_widget(chat.message_box.widget(), area);
 }

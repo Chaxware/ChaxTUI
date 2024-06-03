@@ -1,11 +1,12 @@
 use std::io::Result;
 
 use ratatui::{backend::Backend, Terminal};
+use tui_textarea::TextArea;
 
 use crate::api::Api;
 use crate::events::handle_events;
 use crate::ui::chat::{refresh_chat, ChatUiState};
-use crate::ui::{draw_ui, load_ui, MessageStyle};
+use crate::ui::{draw_ui, load_ui, reset_message_box, MessageStyle};
 
 /* ----- Struct Declarations ------ */
 
@@ -37,6 +38,8 @@ pub struct Chat<'a> {
     // Think of it as a cache, otherwise we would have to recalculate
     // everything each frame
     pub ui_state: ChatUiState<'a>,
+
+    pub message_box: TextArea<'a>,
 }
 
 pub enum ChatType {
@@ -104,14 +107,18 @@ impl<'a> App<'a> {
 
 impl<'a> Chat<'a> {
     pub fn new(chat_type: ChatType, backend_base_url: String) -> Self {
-        let new_chat = Self {
+        let mut new_chat = Self {
             api: Api::new(backend_base_url),
             chat_type,
 
             messages: Vec::new(),
 
             ui_state: ChatUiState::new(),
+
+            message_box: TextArea::default(),
         };
+
+        reset_message_box(&mut new_chat);
 
         new_chat
     }
@@ -131,7 +138,8 @@ impl<'a> Chat<'a> {
         refresh_chat(self);
     }
 
-    pub fn show_error(&mut self, error: String) {
+    pub fn show_error(&mut self, mut error: String) {
+        error.push('\n');
         self.messages.push(Message {
             id: "".into(),
             time: "".into(),
@@ -151,7 +159,11 @@ impl<'a> Chat<'a> {
         match fetch_result {
             Ok(result) => {
                 self.messages = Vec::new();
-                for message in result.messages {
+                for mut message in result.messages {
+                    if !message.text.ends_with('\n') {
+                        message.text.push('\n');
+                    }
+
                     self.messages.push(Message {
                         id: message.id,
                         time: message.created_at,
