@@ -1,9 +1,7 @@
-use std::{
-    env,
-    io::{stdout, Result},
-};
+use std::io::{stdout, Result};
 
 use app::App;
+use clap::Parser;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
@@ -19,15 +17,21 @@ mod app;
 mod events;
 mod ui;
 
+#[derive(Parser)]
+struct Arguments {
+    backend_base_url: String,
+    hub_id: String,
+    channel_id: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Take backend server url as cli argument
-    let mut backend_base_url: String = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "http://localhost:8787".into());
-    if backend_base_url.ends_with('/') {
-        backend_base_url.pop();
-    }
+    let args = Arguments::parse();
+    let backend_base_url = args.backend_base_url;
+    let hub_id = args.hub_id;
+    let channel_id = args.channel_id;
+
+    let channel_url: String = format!("{}/chat/{}/{}", backend_base_url, hub_id, channel_id);
 
     // Enter TUI screen
     enable_raw_mode()?;
@@ -41,7 +45,7 @@ async fn main() -> Result<()> {
     let mut terminal = Terminal::new(terminal_backend)?;
 
     // Initialize and run app
-    let mut app = App::new(backend_base_url);
+    let mut app = App::new(channel_url);
     app.run(&mut terminal).await?;
 
     // Exit TUI screen

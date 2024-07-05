@@ -7,24 +7,44 @@ use serde::{Deserialize, Serialize};
 // The struct that declares and receives the properties individual
 // messages of the JSON response
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[allow(non_snake_case)]
 pub struct MessageItem {
     pub id: String,
     pub text: String,
-    pub created_at: String,
+    pub channelId: String,
+    pub userId: String,
+    pub createdAt: String,
+    pub updatedAt: String,
 }
 
 // The struct that receives the full JSON response for GET request
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[allow(non_snake_case)]
 pub struct ApiResponse {
     pub messages: Vec<MessageItem>,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct ChatGetResponse {
+    pub id: String,
+    pub name: String,
+    pub hubId: String,
+    pub createdAt: String,
+    pub updatedAt: String,
+    pub messages: Vec<MessageItem>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+pub struct MessagePostResponse {
+    pub success: bool,
+    pub message: MessageItem,
+}
+
 pub struct Api {
     client: Client,
-    message_list_url: String,
-    message_post_url: String,
+    chat_url: String,
 }
 
 #[derive(Debug)]
@@ -55,16 +75,16 @@ impl Api {
     pub fn new(backend_base_url: String) -> Api {
         Api {
             client: Client::new(),
-            message_list_url: format!("{}/chat", backend_base_url), // GET request url
-            message_post_url: format!("{}/chat/send", backend_base_url), // POST request url
+            chat_url: backend_base_url.clone(), // GET request url
         }
     }
 
     // Send GET request to get JSON of all messages in DB
-    pub async fn fetch_messages(&self) -> Result<ApiResponse, anyhow::Error> {
-        let response = self.client.get(&self.message_list_url).send().await?;
+    pub async fn fetch_messages(&self) -> Result<ChatGetResponse, anyhow::Error> {
+        let response = self.client.get(&self.chat_url).send().await?;
+
         if response.status().is_success() {
-            match response.json::<ApiResponse>().await {
+            match response.json::<ChatGetResponse>().await {
                 Ok(api_response) => Ok(api_response),
                 Err(e) => Err(anyhow!(format!(
                     "Error when trying to parse messages: {}",
@@ -77,18 +97,24 @@ impl Api {
     }
 
     // Send POST request as JSON to add message to DB
-    pub async fn send_message(&self, message_text: &String) -> Result<(), anyhow::Error> {
+    pub async fn send_message(&self, message_text: &String) -> Result<MessageItem, anyhow::Error> {
         let response = self
             .client
-            .post(&self.message_post_url)
-            .json(&serde_json::json!({ "text": message_text }))
+            .post(&self.chat_url)
+            .json(&serde_json::json!({ "text": message_text, "userId": "Someone" }))
             .send()
             .await?;
 
-        if !response.status().is_success() {
-            Err(anyhow!("Failed to send message"))
+        if response.status().is_success() {
+            match response.json::<MessagePostResponse>().await {
+                Ok(api_response) => Ok(api_response.message),
+                Err(e) => Err(anyhow!(format!(
+                    "Error when trying to parse message: {}",
+                    e
+                ))),
+            }
         } else {
-            Ok(())
+            Err(anyhow!("Failed to send message"))
         }
     }
 }

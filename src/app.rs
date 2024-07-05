@@ -49,8 +49,10 @@ pub enum ChatType {
 }
 pub struct Message {
     pub id: String,
-    pub time: String,
-    pub author: String,
+    pub user_id: String,
+    pub channel_id: String,
+    pub created_at: String,
+    pub updated_at: String,
 
     pub text: String,
 
@@ -126,8 +128,19 @@ impl<'a> Chat<'a> {
     pub async fn send_message(&mut self, mut message: Message) {
         // Try sending message to server, if failed, send an error in chat
         match self.api.send_message(&message.text).await {
-            Ok(_) => {
-                self.messages.push(message);
+            Ok(message_item) => {
+                self.messages.push(Message {
+                    id: message_item.id,
+                    text: format!("{}\n", message_item.text),
+                    user_id: message_item.userId,
+                    channel_id: message_item.channelId,
+                    created_at: message_item.createdAt,
+                    updated_at: message_item.updatedAt,
+
+                    message_type: MessageType::Normal,
+                    lines: None,
+                    style: MessageStyle::default(),
+                });
             }
             Err(e) => {
                 message.message_type = MessageType::Unsent;
@@ -142,8 +155,10 @@ impl<'a> Chat<'a> {
         error.push('\n');
         self.messages.push(Message {
             id: "".into(),
-            time: "".into(),
-            author: "System".into(),
+            created_at: "".into(),
+            updated_at: "".into(),
+            channel_id: "".into(),
+            user_id: "System".into(),
             text: error,
             message_type: MessageType::SystemError,
             lines: None,
@@ -166,14 +181,17 @@ impl<'a> Chat<'a> {
 
                     self.messages.push(Message {
                         id: message.id,
-                        time: message.created_at,
-                        author: "Someone".into(),
+                        channel_id: message.channelId,
+                        created_at: message.createdAt,
+                        updated_at: message.updatedAt,
+                        user_id: message.userId,
                         text: message.text,
                         message_type: MessageType::Normal,
                         lines: None,
                         style: MessageStyle::default(),
                     })
                 }
+                self.messages.reverse();
             }
             Err(e) => {
                 self.show_error(format!("Failed to fetch messages: {}", e));

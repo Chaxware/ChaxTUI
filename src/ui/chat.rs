@@ -168,7 +168,7 @@ pub fn refresh_chat(chat: &mut Chat) {
             }
         }
 
-        let author_span = Span::from(format!(" {} ", &message.author)).style(message.style.author);
+        let author_span = Span::from(format!(" {} ", &message.user_id)).style(message.style.author);
 
         let mut lines: Vec<Line> = Vec::new();
 
@@ -179,7 +179,7 @@ pub fn refresh_chat(chat: &mut Chat) {
                 &message_line.to_string(),
                 max_width,
                 if first_line {
-                    message.author.len() + 4
+                    message.user_id.len() + 4
                 } else {
                     0
                 },
@@ -202,7 +202,7 @@ pub fn refresh_chat(chat: &mut Chat) {
             }
         }
 
-        message.lines = Some(lines.len()); // Update UI state
+        message.lines = Some(lines.len() + 1); // Update UI state
 
         chat.ui_state
             .chat_list_items

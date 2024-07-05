@@ -109,7 +109,7 @@ fn draw_scrollbar(frame: &mut Frame, chat: &mut Chat, area: Rect) {
     );
     frame.render_stateful_widget(
         scrollbar,
-        area.inner(&Margin {
+        area.inner(Margin {
             vertical: 1,
             horizontal: 0,
         }),

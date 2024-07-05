@@ -51,10 +51,16 @@ pub async fn handle_events(app: &mut App<'_>) -> Result<bool> {
                     return Ok(false);
                 }
 
+                if message_text.ends_with('\n') {
+                    message_text.pop();
+                }
+
                 let message = Message {
                     id: "".into(),
-                    time: "".into(),
-                    author: "You".into(),
+                    channel_id: "".into(),
+                    created_at: "".into(),
+                    updated_at: "".into(),
+                    user_id: "You".into(),
                     text: message_text,
                     message_type: MessageType::Normal,
                     lines: None,
