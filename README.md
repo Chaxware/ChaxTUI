@@ -21,11 +21,5 @@ npm run dev
 git clone https://github.com/Chaxware/ChaxTUI chax-tui
 cd chax-tui
 git checkout ratatui
-cargo run # Runs on default port 8787
-```
-
-If the backend is attached to a different port, you should specify it:
-
-```bash
-cargo run "http://localhost:<port>" # Replace <port> with the port
+cargo run "http://localhost:<port>" <hub_id> <channel_id> # Replace items within <> with respective values
 ```
